@@ -73,8 +73,13 @@ class EnterpriseAIAgent:
             # Xây dựng lịch sử chat theo định dạng của SDK mới
             chat_history = []
             for msg in history[-6:]:
-                role = "user" if msg["role"] == "user" else "model"
-                chat_history.append({"role": role, "parts": [msg["content"]]})
+                role = "user" if msg.get("role") == "user" else "model"
+                content_text = str(msg.get("content", ""))
+                if content_text.strip():
+                    chat_history.append({
+                        "role": role,
+                        "parts": [content_text]
+                    })
 
             # Ghép thêm ngữ cảnh ML/RAG vào tin nhắn nếu có
             final_prompt = user_message
