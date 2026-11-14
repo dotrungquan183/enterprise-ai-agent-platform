@@ -7,19 +7,11 @@ import streamlit as st
 from google import genai
 from hdfs import InsecureClient
 
-# Giữ nguyên import ML & RAG của bạn để dùng cho sau này
-from src.core.ml_tools import ClassicalMLToolbox
-from src.core.rag_engine import HybridRAGEngine
-
 SYSTEM_INSTRUCTION = """Bạn là Reiner, một trợ lý AI doanh nghiệp thông minh, sắc sảo và chuyên nghiệp. 
 Giải thích toán học dùng LaTeX, viết code chuẩn xác, ngắn gọn đi thẳng vào vấn đề."""
 
 class EnterpriseAIAgent:
     def __init__(self):
-        # Khởi tạo ML & RAG để dành sau này
-        self.ml_toolbox = ClassicalMLToolbox()
-        self.rag_engine = HybridRAGEngine()
-        
         # Thiết lập kết nối Data Lake (HDFS)
         try:
             # Thay IP bằng địa chỉ Hadoop NameNode của bạn
@@ -46,7 +38,7 @@ class EnterpriseAIAgent:
             with self.hdfs_client.write(full_path, encoding='utf-8') as writer:
                 json.dump(log_entry, writer)
         except Exception as e:
-            # Try-except để bot vẫn chạy mượt mà ngay cả khi HDFS sập
+            # Try-except để bot vẫn chạy mượt mà ngay cả khi HDFS chưa mở
             print(f"Chưa kết nối được HDFS (Log tạm bỏ qua): {e}")
 
     def chat_stream(
