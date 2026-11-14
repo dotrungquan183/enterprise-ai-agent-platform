@@ -1,153 +1,102 @@
-import sys
-import time
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
 import streamlit as st
 from src.core.agent_orchestrator import EnterpriseAIAgent
 
-st.set_page_config(
-    page_title="Gemini-Style AI Agent (LLM + ML Tools + RAG)",
-    page_icon="✨",
-    layout="wide"
-)
+# 1. Cấu hình trang cơ bản
+st.set_page_config(page_title="Reiner AI", page_icon="✨", layout="wide")
 
+# Xóa các khoảng trắng mặc định của Streamlit để giao diện tràn viền giống Gemini hơn
+st.markdown("""
+    <style>
+        .block-container { padding-top: 2rem; padding-bottom: 0rem; }
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+
+# Khởi tạo Agent (API Key và Model đã được cấu hình ngầm trong agent_orchestrator)
 @st.cache_resource
 def get_agent():
     return EnterpriseAIAgent()
 
 agent = get_agent()
 
-# --- THANH BÊN (SIDEBAR) ---
+# ==========================================
+# 2. XÂY DỰNG SIDEBAR (THEO PHONG CÁCH GEMINI)
+# ==========================================
 with st.sidebar:
-    st.title("✨ Cấu hình Bộ não AI")
-    st.caption("Kết nối LLM thực thụ để mở khóa khả năng suy luận đa lượt & tự động gọi hàm (Function Calling).")
-
-    provider = st.selectbox(
-        "1. Chọn Nhà cung cấp LLM:",
-        ["gemini", "groq", "openai", "ollama"],
-        index=0,
-        help="Khuyên dùng 'gemini' (Miễn phí qua Google AI Studio) hoặc 'groq' (Miễn phí Llama-3.3-70B)."
-    )
-
-    model_map = {
-        "gemini": ["gemini-3.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
-        "groq": ["llama-3.3-70b-versatile", "qwen-qwq-32b"],
-        "openai": ["gpt-4o-mini", "gpt-4o"],
-        "ollama": ["qwen2.5:7b", "llama3.1:8b", "deepseek-r1:7b"]
-    }
-    model_name = st.selectbox("2. Chọn Mô hình (Model):", model_map[provider])
-
-    api_key = ""
-    if provider != "ollama":
-        api_key = st.text_input(
-            f"3. Nhập {provider.upper()} API Key:",
-            type="password",
-            help="Lấy Gemini API Key miễn phí tại: https://aistudio.google.com/apikey"
-        )
-        if not api_key:
-            st.warning("💡 Hãy nhập API Key (Miễn phí tại aistudio.google.com) để con AI thông minh như Gemini thật!")
-        else:
-            st.success("✅ Đã kết nối API Key! AI Agent đã sẵn sàng suy luận tự do.")
-
-    st.divider()
-    st.subheader("🧪 Prompt Thử nghiệm Đẳng cấp")
-    p1 = st.button("🔍 Phân tích CUST_001 & đề xuất chiến lược giữ chân")
-    p2 = st.button("⚖️ So sánh CUST_001 và CUST_002 rồi viết báo cáo")
-    p3 = st.button("🛒 Tư vấn combo khi khách mua Laptop (FP-Growth)")
-    p4 = st.button("📐 Giải thích toán học PCA & thử gọi ML Tool")
-
-    if st.button("🗑️ Xóa lịch sử trò chuyện", use_container_width=True):
+    # Header với Tên và Icon
+    st.markdown("<h2 style='display: flex; align-items: center; gap: 8px; margin-top: -20px;'>✨ Reiner</h2>", unsafe_allow_html=True)
+    
+    # Nút New Chat
+    if st.button("📝 New chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Các menu điều hướng tĩnh (Mô phỏng giao diện)
+    st.markdown("📂 Library")
+    st.markdown("🖼️ Images")
+    st.markdown("🕒 Scheduled")
+    st.markdown("🎓 Students")
+    st.markdown("••• More")
+    
+    st.markdown("---")
+    
+    # Khu vực Notebooks
+    st.markdown("<p style='color: gray; font-size: 14px; margin-bottom: 5px;'>Notebooks</p>", unsafe_allow_html=True)
+    st.markdown("➕ New notebook")
+    st.markdown("📄 Untitled notebook")
+    st.markdown("📄 C Language Input, Output, and Fo...")
+    
+    st.markdown("---")
+    
+    # Khu vực Lịch sử trò chuyện
+    st.markdown("<div style='display: flex; justify-content: space-between; align-items: center;'><p style='color: gray; font-size: 14px; margin-bottom: 5px;'>All</p><span>▽</span></div>", unsafe_allow_html=True)
+    st.markdown("💬 Tiếp tục triển khai AI Streamlit")
+    st.markdown("💬 Thuật toán Random Forest")
+    st.markdown("💬 Tư vấn chọn quần mới")
+    st.markdown("💬 Hỗ trợ Giải Bài Toán")
+    st.markdown("💬 Cận thị 1.25 độ có phải đi nghĩa vụ...")
+    st.markdown("💬 Xử lý sau khi đăng nhập")
 
-# --- MÀN HÌNH CHAT CHÍNH ---
-st.title("✨ Enterprise AI Collaborator (Agentic LLM + 12 ML Tools + RAG)")
-st.markdown(
-    "Mô phỏng kiến trúc **Gemini / ChatGPT thực thụ**: Tự động suy luận, nhớ ngữ cảnh hội thoại nhiều lượt, "
-    "hỗ trợ công thức Toán LaTeX và **tự động kích hoạt các mô hình Machine Learning** khi cần số liệu thực tế."
-)
 
+# ==========================================
+# 3. KHU VỰC CHAT CHÍNH (MAIN AREA)
+# ==========================================
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": (
-                "Xin chào! Tôi là **AI Collaborator** của bạn.\n\n"
-                "Sau khi bạn điền **Gemini API Key** (hoặc Groq/OpenAI/Ollama) ở thanh bên trái, bạn có thể:\n"
-                "- Trò chuyện tự do mọi chủ đề, yêu cầu chứng minh công thức Toán học (LaTeX), viết code Python/SQL.\n"
-                "- Bảo tôi phân tích dữ liệu khách hàng thực tế (VD: *\"So sánh rủi ro rời bỏ của CUST_001 và CUST_002\"*) — "
-                "tôi sẽ **tự động gọi mô hình Random Forest, K-Means, PCA, Linear Ridge** ở dưới ngầm để lấy số liệu phân tích cho bạn!"
-            )
-        }
-    ]
+    st.session_state.messages = []
 
-# Hiển thị toàn bộ lịch sử trò chuyện
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        if msg.get("tools_called"):
-            with st.expander(f"🛠️ Đã tự động kích hoạt {len(msg['tools_called'])} ML/RAG Tool(s)", expanded=False):
-                st.json(msg["tools_called"])
-        st.markdown(msg["content"])
+# Chỉ hiển thị lời chào nếu chưa có tin nhắn nào
+if not st.session_state.messages:
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>✨ Xin chào, tôi là Reiner</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: gray; font-weight: normal;'>Hôm nay tôi có thể giúp gì cho bạn?</h3>", unsafe_allow_html=True)
 
-# Xử lý câu hỏi từ nút bấm hoặc ô nhập
-preset_prompt = None
-if p1:
-    preset_prompt = "Hãy phân tích toàn diện khách hàng CUST_001 bằng mô hình ML, đối chiếu với chính sách nội bộ xem họ thuộc nhóm nào và đề xuất phương án giữ chân cụ thể."
-elif p2:
-    preset_prompt = "Hãy kiểm tra cả hai khách hàng CUST_001 và CUST_002, lập bảng so sánh các chỉ số dự báo ML (cụm K-Means, CLV, xác suất rời bỏ Random Forest) giữa hai người này."
-elif p3:
-    preset_prompt = "Khách hàng vừa bỏ Laptop vào giỏ hàng. Hãy chạy thuật toán FP-Growth xem nên gợi ý mua kèm món gì và viết một lời chào mời khéo léo gửi cho khách."
-elif p4:
-    preset_prompt = "Giải thích ngắn gọn bản chất toán học của PCA bằng công thức LaTeX, sau đó gọi thử công cụ phân tích khách hàng CUST_003 để xem tọa độ nén PCA 2D thực tế của họ là bao nhiêu."
+# Hiển thị lịch sử tin nhắn
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-user_query = st.chat_input("Hỏi bất cứ điều gì (Toán học, Code, LaTeX, hoặc phân tích khách hàng CUST_001, giỏ hàng...)")
-active_query = preset_prompt or user_query
-
-if active_query:
-    # Lưu lịch sử trước khi thêm câu mới để truyền vào bộ nhớ Agent
-    prior_history = [
-        {"role": m["role"], "content": m["content"]}
-        for m in st.session_state.messages
-    ]
-
-    st.session_state.messages.append({"role": "user", "content": active_query})
+# Khung nhập liệu (Chat input)
+if prompt := st.chat_input("Hỏi Reiner bất cứ điều gì..."):
+    # Hiển thị tin nhắn của người dùng
     with st.chat_message("user"):
-        st.markdown(active_query)
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
 
-    with st.chat_message("assistant"):
-        with st.status("🧠 AI đang suy luận & kiểm tra bộ công cụ Machine Learning...", expanded=True) as status:
-            st.write("Đang phân tích ngữ cảnh hội thoại và quyết định Tool Calling...")
-            result = agent.chat_stream(
-                user_message=active_query,
-                history=prior_history,
-                provider=provider,
-                api_key=api_key,
-                model_name=model_name
+    # AI xử lý và phản hồi
+    with st.chat_message("model"):
+        message_placeholder = st.empty()
+        
+        with st.spinner("Đang suy nghĩ..."):
+            # Gọi Agent. Không cần truyền API key hay Model nữa vì đã fix cứng ở backend
+            response = agent.chat_stream(
+                user_message=prompt,
+                history=st.session_state.messages
             )
-            tools_used = result.get("tools_called", [])
-            if tools_used:
-                st.write(f"✅ Đã tự động gọi **{len(tools_used)} công cụ ML/RAG**: `{[t['tool_name'] for t in tools_used]}`")
-            else:
-                st.write("✅ Trả lời trực tiếp từ tri thức LLM (Không cần gọi Tool)")
-            status.update(label=f"✨ Hoàn tất ({result['engine_used']})", state="complete", expanded=False)
-
-        if tools_used:
-            with st.expander(f"🛠️ Chi tiết các hàm ML/RAG mà AI đã tự động gọi ({len(tools_used)})", expanded=False):
-                st.json(tools_used)
-
-        # Hiệu ứng gõ chữ Streaming mượt mà như Gemini/ChatGPT
-        def stream_generator(text: str):
-            for word in text.split(" "):
-                yield word + " "
-                time.sleep(0.012)
-
-        st.write_stream(stream_generator(result["reply"]))
-
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": result["reply"],
-        "tools_called": tools_used
-    })
-    if preset_prompt:
-        st.rerun()
+            
+        reply_text = response.get("reply", "Xin lỗi, đã có lỗi xảy ra trong quá trình xử lý.")
+        message_placeholder.markdown(reply_text)
+        
+    # Lưu tin nhắn của AI vào lịch sử
+    st.session_state.messages.append({"role": "model", "content": reply_text})
