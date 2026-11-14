@@ -41,3 +41,13 @@ services:
     volumes:
       - ./datalake_data:/data
     command: server /data --console-address ":9001"
+
+  ai-backend:
+    build: .
+    container_name: enterprise_ai_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./datalake_data:/app/datalake_data  # Hoặc đảm bảo volume tách bạch
+    command: uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload --reload-exclude datalake_data
