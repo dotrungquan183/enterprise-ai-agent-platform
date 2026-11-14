@@ -25,7 +25,7 @@ class EnterpriseAIAgent:
         history: List[Dict[str, Any]],
         provider: str = "gemini",
         api_key: str = "",
-        model_name: str = "gemini-3.5-flash"  # Sử dụng đúng phiên bản 3.5-flash chuẩn xác
+        model_name: str = "gemini-3.5-flash"
     ) -> Dict[str, Any]:
         
         msg_lower = user_message.lower()
@@ -70,29 +70,26 @@ class EnterpriseAIAgent:
             client = genai.Client(api_key=resolved_key)
             target_model = model_name if model_name else "gemini-3.5-flash"
 
-            # Xây dựng lịch sử chat theo định dạng của SDK mới
-            chat_history = []
+            # Xử lý Lịch sử Chat an toàn tuyệt đối (Đưa thành chuỗi văn bản thay vì Object)
+            context_str = "[Ngữ cảnh hội thoại trước đó]\n"
             for msg in history[-6:]:
-                role = "user" if msg.get("role") == "user" else "model"
-                content_text = str(msg.get("content", ""))
-                if content_text.strip():
-                    chat_history.append({
-                        "role": role,
-                        "parts": [content_text]
-                    })
+                role_name = "Người dùng" if msg.get("role") == "user" else "AI"
+                context_str += f"{role_name}: {msg.get('content', '')}\n"
 
-            # Ghép thêm ngữ cảnh ML/RAG vào tin nhắn nếu có
-            final_prompt = user_message
-            if ml_context_data or rag_docs:
-                context_str = "[Dữ liệu Hệ thống]\n"
-                if ml_context_data:
-                    context_str += f"ML Data: {json.dumps(ml_context_data, ensure_ascii=False)}\n"
-                if rag_docs:
-                    context_str += f"RAG Doc: {rag_docs[0]['chunk_content']}\n"
-                final_prompt = f"{context_str}\nCâu hỏi người dùng: {user_message}"
+            # Ghép thêm ngữ cảnh ML/RAG vào tin nhắn
+            context_str += "\n[Dữ liệu Hệ thống]\n"
+            if ml_context_data:
+                context_str += f"ML Data: {json.dumps(ml_context_data, ensure_ascii=False)}\n"
+            if rag_docs:
+                context_str += f"RAG Doc: {rag_docs[0]['chunk_content']}\n"
+            
+            final_prompt = f"{context_str}\nCâu hỏi mới của người dùng: {user_message}"
 
-            # Gọi API qua client.chats
-            chat = client.chats.create(model=target_model, history=chat_history)
+            # Cấu hình System Instruction cho Client mới
+            config = {"system_instruction": SYSTEM_INSTRUCTION}
+
+            # Gọi API qua client.chats (KHÔNG DÙNG THAM SỐ history để tránh lỗi Pydantic)
+            chat = client.chats.create(model=target_model, config=config)
             response = chat.send_message(final_prompt)
 
             return {
