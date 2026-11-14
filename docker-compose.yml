@@ -1,36 +1,8 @@
 version: '3.8'
 
 services:
-  ai-backend:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    container_name: enterprise_ai_backend
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env.example
-    volumes:
-      - ./:/app
-    command: uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload
-
-  ai-chat-ui:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    container_name: enterprise_ai_chat_ui
-    ports:
-      - "8501:8501"
-    environment:
-      - BACKEND_URL=http://ai-backend:8000
-    volumes:
-      - ./:/app
-    depends_on:
-      - ai-backend
-    command: streamlit run src/ui/chat_app.py --server.port=8501 --server.address=0.0.0.0
-
   minio:
-    image: minio/minio
+    image: minio/minio:latest
     container_name: reiner_datalake
     ports:
       - "9000:9000"
@@ -38,9 +10,9 @@ services:
     environment:
       - MINIO_ROOT_USER=reineradmin
       - MINIO_ROOT_PASSWORD=reiner12345
+    command: server /data --console-address ":9001"
     volumes:
       - ./datalake_data:/data
-    command: server /data --console-address ":9001"
 
   ai-backend:
     build: .
@@ -49,5 +21,23 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
-      - ./datalake_data:/app/datalake_data  # Hoặc đảm bảo volume tách bạch
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=reineradmin
+      - MINIO_SECRET_KEY=reiner12345
     command: uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload --reload-exclude datalake_data
+    depends_on:
+      - minio
+
+  ai-chat-ui:
+    build: .
+    container_name: enterprise_ai_chat_ui
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - BACKEND_URL=http://ai-backend:8000
+    command: streamlit run src/ui/chat_app.py --server.port=8501 --server.address=0.0.0.0
+    depends_on:
+      - ai-backend
