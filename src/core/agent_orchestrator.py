@@ -1,7 +1,8 @@
 import os
 import json
 from typing import List, Dict, Any
-import google.generativeai as genai
+import streamlit as st
+from google import genai
 from src.core.ml_tools import ClassicalMLToolbox
 from src.core.rag_engine import HybridRAGEngine
 
@@ -24,10 +25,9 @@ class EnterpriseAIAgent:
         history: List[Dict[str, Any]],
         provider: str = "gemini",
         api_key: str = "",
-        model_name: str = "gemini-3.5-flash"
+        model_name: str = "gemini-3.5-flash"  # Sử dụng đúng phiên bản 3.5-flash chuẩn xác
     ) -> Dict[str, Any]:
         
-        api_key = api_key.strip() if api_key else ""
         msg_lower = user_message.lower()
         
         # 1. Phát hiện ý định gọi ML Tools
@@ -52,21 +52,25 @@ class EnterpriseAIAgent:
         # 2. Truy xuất RAG
         rag_docs = self.rag_engine.retrieve(user_message, top_k=1)
 
-        # 3. Gọi Gemini API bằng google.generativeai chuẩn đã test thành công
+        # 3. Lấy API key an toàn từ st.secrets hoặc os.getenv
         try:
-            key = api_key or os.getenv("GEMINI_API_KEY", "")
-            if not key:
+            resolved_key = api_key.strip() if api_key else ""
+            if not resolved_key:
+                try:
+                    resolved_key = st.secrets.get("GEMINI_API_KEY", "")
+                except Exception:
+                    pass
+            if not resolved_key:
+                resolved_key = os.getenv("GEMINI_API_KEY", "")
+
+            if not resolved_key:
                 return self._fallback_response(user_message, ml_context_data, rag_docs)
 
-            genai.configure(api_key=key)
-            
+            # Khởi tạo client chuẩn của thư viện google-genai
+            client = genai.Client(api_key=resolved_key)
             target_model = model_name if model_name else "gemini-3.5-flash"
-            model = genai.GenerativeModel(
-                model_name=target_model,
-                system_instruction=SYSTEM_INSTRUCTION
-            )
 
-            # Xây dựng lịch sử chat
+            # Xây dựng lịch sử chat theo định dạng của SDK mới
             chat_history = []
             for msg in history[-6:]:
                 role = "user" if msg["role"] == "user" else "model"
@@ -82,7 +86,8 @@ class EnterpriseAIAgent:
                     context_str += f"RAG Doc: {rag_docs[0]['chunk_content']}\n"
                 final_prompt = f"{context_str}\nCâu hỏi người dùng: {user_message}"
 
-            chat = model.start_chat(history=chat_history)
+            # Gọi API qua client.chats
+            chat = client.chats.create(model=target_model, history=chat_history)
             response = chat.send_message(final_prompt)
 
             return {
