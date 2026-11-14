@@ -62,29 +62,52 @@ def fetch_all_sessions():
         return []
 
 def load_messages_by_session(target_session_id):
-    """Tải toàn bộ tin nhắn của một session từ các file JSON trên MinIO"""
+    """Tải toàn bộ tin nhắn của một session cụ thể từ các file JSON trên MinIO"""
     try:
         client = get_minio_client()
         objects = client.list_objects(bucket_name, prefix="chat_logs/", recursive=True)
         session_logs = []
         
+        count_files = 0
         for obj in objects:
             if target_session_id in obj.object_name:
+                count_files += 1
                 response = client.get_object(bucket_name, obj.object_name)
-                data = json.loads(response.read().decode('utf-8'))
-                if isinstance(data, list):
-                    session_logs.extend(data)
-                else:
-                    session_logs.append(data)
-                response.close()
-                response.release_connection()
+                try:
+                    raw_data = response.read().decode('utf-8')
+                    data = json.loads(raw_data)
+                    
+                    if isinstance(data, list):
+                        session_logs.extend(data)
+                    elif isinstance(data, dict):
+                        session_logs.append(data)
+                finally:
+                    response.close()
+        
+        # IN THÔNG BÁO RA MÀN HÌNH ĐỂ CHECK TRỰC QUAN
+        st.info(f"🔍 Đã quét thấy {count_files} file khớp với session. Tổng số log thô gom được: {len(session_logs)}")
                 
-        # Sắp xếp theo thời gian tăng dần
-        return sorted(session_logs, key=lambda x: x.get("timestamp", ""))
+        formatted_messages = []
+        for msg in session_logs:
+            role = msg.get("role", "user")
+            if role == "model":
+                role = "assistant"
+            content = msg.get("content", "")
+            timestamp = msg.get("timestamp", "")
+            
+            if content:
+                formatted_messages.append({
+                    "role": role, 
+                    "content": content,
+                    "timestamp": timestamp
+                })
+                
+        st.info(f"✨ Số tin nhắn sau khi format để vẽ lên UI: {len(formatted_messages)}")
+        return sorted(formatted_messages, key=lambda x: x.get("timestamp", ""))
     except Exception as e:
-        st.error(f"Lỗi tải lịch sử chat: {e}")
+        st.error(f"Lỗi code: {e}")
         return []
-
+    
 # --- CẤU HÌNH TRANG ---
 st.set_page_config(page_title="Reiner AI", page_icon="✨", layout="wide")
 st.markdown("""
