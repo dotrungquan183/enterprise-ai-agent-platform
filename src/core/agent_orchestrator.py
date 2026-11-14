@@ -65,6 +65,11 @@ class EnterpriseAIAgent:
             
             if res.status_code < 400:
                 print(f"✅ [Supabase] Đã ghi log thành công vai trò [{role}] lên mây!")
+                try:
+                    from src.core.minio_sync import sync_supabase_to_minio
+                    sync_supabase_to_minio()
+                except Exception:
+                    pass
                 return
         except Exception as e:
             print(f"⚠️ [Supabase] Lỗi ngoại lệ: {e}")
