@@ -1,14 +1,12 @@
 import os
 import json
-import io
 import socket
 import requests
 import urllib3
 from datetime import datetime
 from typing import List, Dict, Any
-from minio import Minio
 
-# --- ÉP PYTHON DÙNG IPV4 ĐỂ TRÁNH LỖI READ TIMED OUT TRÊN WINDOWS ---
+# Ép buộc Python dùng IPv4 cho các kết nối mạng ổn định trên Windows
 urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
 
 SYSTEM_INSTRUCTION = """Bạn là Reiner, một trợ lý AI doanh nghiệp thông minh, sắc sảo và chuyên nghiệp. 
@@ -17,54 +15,56 @@ Giải thích toán học dùng LaTeX, viết code chuẩn xác, ngắn gọn đ
 
 class EnterpriseAIAgent:
     def __init__(self):
-        self.bucket_name = "reiner-logs"
-        self.minio_client = None
         self.http_session = requests.Session()
 
-        minio_endpoint = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-        access_key = os.getenv("MINIO_ACCESS_KEY", "reineradmin")
-        secret_key = os.getenv("MINIO_SECRET_KEY", "reiner12345")
-
-        try:
-            http_client = urllib3.PoolManager(timeout=urllib3.Timeout(connect=1.0, read=1.0))
-            client = Minio(
-                minio_endpoint,
-                access_key=access_key,
-                secret_key=secret_key,
-                secure=False,
-                http_client=http_client
-            )
-            if not client.bucket_exists(self.bucket_name):
-                client.make_bucket(self.bucket_name)
-            self.minio_client = client
-        except Exception:
-            self.minio_client = None
+        # Cấu hình Supabase REST API với Project ID chuẩn xác
+        self.supabase_url = "https://pehksvqnwpemeifpjnnx.supabase.co/rest/v1/chat_logs"
+        self.supabase_key = "sb_secret_vYEq1KruST1kdmqk4z1Rog_K205n-Or"
+        self.supabase_headers = {
+            "apikey": self.supabase_key,
+            "Authorization": f"Bearer {self.supabase_key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+        }
 
     def log_to_datalake(self, session_id: str, username: str, role: str, content: str):
-        if self.minio_client is None:
-            return
-
+        """Hàm ghi log trực tiếp lên Supabase"""
         log_entry = {
             "session_id": str(session_id),
             "username": str(username),
             "role": str(role),
             "content": str(content),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "is_synced": False
         }
 
-        file_name = f"chat_logs/log_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.json"
-
         try:
-            json_bytes = json.dumps(log_entry, ensure_ascii=False).encode("utf-8")
-            json_stream = io.BytesIO(json_bytes)
-
-            self.minio_client.put_object(
-                bucket_name=self.bucket_name,
-                object_name=file_name,
-                data=json_stream,
-                length=len(json_bytes),
-                content_type="application/json"
+            res = self.http_session.post(
+                self.supabase_url, 
+                headers=self.supabase_headers, 
+                json=log_entry, 
+                timeout=5
             )
+            if res.status_code < 400:
+                print("✅ [Supabase] Đã ghi log thành công lên mây!")
+            else:
+                print(f"⚠️ [Supabase] Lỗi HTTP {res.status_code}: {res.text}")
+        except Exception as e:
+            print(f"⚠️ [Supabase] Lỗi kết nối: {e}")
+
+        # Fallback lưu dự phòng local nếu mất mạng đột xuất
+        try:
+            backup_file = "local_chat_backup.json"
+            existing_data = []
+            if os.path.exists(backup_file):
+                with open(backup_file, "r", encoding="utf-8") as f:
+                    try:
+                        existing_data = json.load(f)
+                    except:
+                        existing_data = []
+            existing_data.append(log_entry)
+            with open(backup_file, "w", encoding="utf-8") as f:
+                json.dump(existing_data, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
 
@@ -79,7 +79,6 @@ class EnterpriseAIAgent:
         self.log_to_datalake(session_id, username, "user", user_message)
 
         try:
-            # Chỉ lấy key từ ô nhập trên giao diện hoặc biến môi trường (KHÔNG gán cứng key trong code)
             active_key = (
                 api_key_override.strip()
                 if (api_key_override and api_key_override.strip())
@@ -88,7 +87,7 @@ class EnterpriseAIAgent:
 
             if not active_key:
                 return {
-                    "reply": "⚠️ **Chưa có API Key!** Vui lòng dán Gemini API Key của bạn vào ô **🔑 Gemini API Key** ở thanh công cụ bên trái rồi nhấn Enter."
+                    "reply": "⚠️ **Chưa có API Key!** Vui lòng dán Gemini API Key vào ô **🔑 Gemini API Key** ở thanh công cụ bên trái rồi nhấn Enter."
                 }
 
             context_str = ""
@@ -115,10 +114,11 @@ class EnterpriseAIAgent:
                 ]
             }
 
+            # Ưu tiên quét model 3.5 trước
             models_to_try = [
                 "gemini-3.5-flash",
                 "gemini-3.5-pro",
-                "gemini-flash-latest",
+                "gemini-1.5-flash",
                 "gemini-2.5-flash"
             ]
             last_error = None
@@ -139,7 +139,7 @@ class EnterpriseAIAgent:
 
                         self.log_to_datalake(session_id, username, "model", reply_text)
                         return {"reply": reply_text}
-                    elif res.status_code == 404:
+                    elif res.status_code in [404, 429]:
                         continue
                     else:
                         raise RuntimeError(f"HTTP {res.status_code} ({model_name}) - {res.text}")
@@ -147,7 +147,7 @@ class EnterpriseAIAgent:
                     last_error = f"{model_name}: {str(req_err)}"
                     continue
 
-            raise RuntimeError(last_error or "Không thể kết nối tới máy chủ Gemini.")
+            raise RuntimeError(last_error or "Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.")
 
         except Exception as e:
             error_msg = f"*(Lỗi kết nối AI: {str(e)})*"

@@ -1,0 +1,34 @@
+[
+  {
+    "session_id": "b802aa15-0c44-4fa2-b0c8-46d43c237745",
+    "username": "quan",
+    "role": "user",
+    "content": "alo",
+    "timestamp": "2026-11-14T21:25:30.354268",
+    "is_synced": false
+  },
+  {
+    "session_id": "05244b0c-eb6f-4a76-80b8-64fb07827a2c",
+    "username": "quan",
+    "role": "user",
+    "content": "alo",
+    "timestamp": "2026-11-14T21:30:36.936915",
+    "is_synced": false
+  },
+  {
+    "session_id": "05244b0c-eb6f-4a76-80b8-64fb07827a2c",
+    "username": "quan",
+    "role": "user",
+    "content": "hey",
+    "timestamp": "2026-11-14T21:32:50.801008",
+    "is_synced": false
+  },
+  {
+    "session_id": "05244b0c-eb6f-4a76-80b8-64fb07827a2c",
+    "username": "quan",
+    "role": "error",
+    "content": "*(Lỗi kết nối AI: Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.)*",
+    "timestamp": "2026-11-14T21:32:53.691798",
+    "is_synced": false
+  }
+]
