@@ -6,3 +6,5 @@ venv/
 models/*.pkl
 models/*.parquet
 !models/.gitkeep
+secret.toml
+.streamlit/
