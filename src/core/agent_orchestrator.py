@@ -1,119 +1,91 @@
 import os
 import json
+import uuid
+from datetime import datetime
 from typing import List, Dict, Any
 import streamlit as st
 from google import genai
+from hdfs import InsecureClient
+
+# Giữ nguyên import ML & RAG của bạn để dùng cho sau này
 from src.core.ml_tools import ClassicalMLToolbox
 from src.core.rag_engine import HybridRAGEngine
 
-SYSTEM_INSTRUCTION = """Bạn là một Trợ lý AI Doanh nghiệp (Enterprise AI Collaborator) cực kỳ thông minh, sắc sảo và chuyên nghiệp. 
-Bạn có phong cách trò chuyện tự nhiên, biết giải thích toán học (dùng LaTeX), viết code và phân tích dữ liệu.
-
-Hệ thống của bạn có tích hợp các cơ sở dữ liệu và mô hình Machine Learning sau:
-- Khách hàng mẫu: CUST_001 (nguy cơ rời bỏ cao), CUST_002 (VIP Kim Cương), CUST_003 (Vàng ổn định).
-- Bạn hãy trả lời câu hỏi của người dùng một cách thuyết phục nhất. Nếu người dùng hỏi về dữ liệu khách hàng cụ thể hoặc gợi ý mua kèm, hãy chủ động phân tích các chiều số liệu (PCA, K-Means, CLV, Churn, FP-Growth).
-"""
+SYSTEM_INSTRUCTION = """Bạn là Reiner, một trợ lý AI doanh nghiệp thông minh, sắc sảo và chuyên nghiệp. 
+Giải thích toán học dùng LaTeX, viết code chuẩn xác, ngắn gọn đi thẳng vào vấn đề."""
 
 class EnterpriseAIAgent:
     def __init__(self):
+        # Khởi tạo ML & RAG để dành sau này
         self.ml_toolbox = ClassicalMLToolbox()
         self.rag_engine = HybridRAGEngine()
+        
+        # Thiết lập kết nối Data Lake (HDFS)
+        try:
+            # Thay IP bằng địa chỉ Hadoop NameNode của bạn
+            self.hdfs_client = InsecureClient('http://localhost:50070', user='hdfs')
+            self.hdfs_log_path = '/user/hive/warehouse/datalake/reiner_logs/'
+        except Exception as e:
+            print(f"Lỗi khởi tạo HDFS: {e}")
+
+    def log_to_datalake(self, session_id: str, username: str, role: str, content: str):
+        """Đóng gói dữ liệu thành JSON và bắn lên thư mục Data Lake"""
+        log_entry = {
+            "session_id": session_id,
+            "username": username,
+            "role": role,
+            "content": content,
+            "timestamp": datetime.now().isoformat()
+        }
+        # Đặt tên file log theo timestamp tới phần nghìn giây
+        file_name = f"log_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.json"
+        
+        try:
+            full_path = os.path.join(self.hdfs_log_path, file_name)
+            # Ghi file thẳng lên HDFS
+            with self.hdfs_client.write(full_path, encoding='utf-8') as writer:
+                json.dump(log_entry, writer)
+        except Exception as e:
+            # Try-except để bot vẫn chạy mượt mà ngay cả khi HDFS sập
+            print(f"Chưa kết nối được HDFS (Log tạm bỏ qua): {e}")
 
     def chat_stream(
         self,
         user_message: str,
         history: List[Dict[str, Any]],
-        provider: str = "gemini",
-        api_key: str = "",
-        model_name: str = "gemini-3.5-flash"
+        session_id: str,
+        username: str
     ) -> Dict[str, Any]:
         
-        msg_lower = user_message.lower()
-        
-        # 1. Phát hiện ý định gọi ML Tools
-        tools_called = []
-        ml_context_data = []
+        # 1. Ghi log lời nhắn của người dùng xuống Data Lake
+        self.log_to_datalake(session_id, username, "user", user_message)
 
-        if any(k in msg_lower for k in ["cust_", "khách hàng", "churn", "rời bỏ", "clv", "phân khúc"]):
-            cid = "CUST_001"
-            if "cust_002" in msg_lower: cid = "CUST_002"
-            elif "cust_003" in msg_lower: cid = "CUST_003"
-            
-            res = self.ml_toolbox.analyze_customer_tool(cid)
-            tools_called.append({"tool_name": "analyze_customer_360", "arguments": {"customer_id": cid}})
-            ml_context_data.append(res)
-
-        if any(k in msg_lower for k in ["mua kèm", "gợi ý", "laptop", "smartphone", "fp-growth"]):
-            item = "Laptop" if "laptop" in msg_lower else "Smartphone"
-            res = self.ml_toolbox.recommend_cross_sell_tool(item)
-            tools_called.append({"tool_name": "recommend_cross_sell_fpgrowth", "arguments": {"item_name": item}})
-            ml_context_data.append(res)
-
-        # 2. Truy xuất RAG
-        rag_docs = self.rag_engine.retrieve(user_message, top_k=1)
-
-        # 3. Lấy API key an toàn
         try:
-            resolved_key = api_key.strip() if api_key else ""
-            if not resolved_key:
-                try:
-                    resolved_key = st.secrets.get("GEMINI_API_KEY", "")
-                except Exception:
-                    pass
-            if not resolved_key:
-                resolved_key = os.getenv("GEMINI_API_KEY", "")
+            # Lấy API Key an toàn
+            api_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
+            client = genai.Client(api_key=api_key)
 
-            if not resolved_key:
-                return self._fallback_response(user_message, ml_context_data, rag_docs)
-
-            # Khởi tạo client chuẩn
-            client = genai.Client(api_key=resolved_key)
-            target_model = model_name if model_name else "gemini-3.5-flash"
-
-            # ---------------------------------------------------------
-            # CÁCH CHUẨN 100% KHÔNG BỊ LỖI PYDANTIC:
-            # Gộp toàn bộ ngữ cảnh và lịch sử thành 1 đoạn Prompt String 
-            # thay vì dùng hàm client.chats.create()
-            # ---------------------------------------------------------
-            context_str = "[Ngữ cảnh hội thoại trước đó]\n"
-            for msg in history[-6:]:
-                role_name = "Người dùng" if msg.get("role") == "user" else "AI"
+            # Đọc lại lịch sử 
+            context_str = ""
+            for msg in history[-10:]:
+                role_name = username if msg.get("role") == "user" else "Reiner"
                 context_str += f"{role_name}: {msg.get('content', '')}\n"
-
-            context_str += "\n[Dữ liệu Hệ thống]\n"
-            if ml_context_data:
-                context_str += f"ML Data: {json.dumps(ml_context_data, ensure_ascii=False)}\n"
-            if rag_docs:
-                context_str += f"RAG Doc: {rag_docs[0]['chunk_content']}\n"
             
-            final_prompt = f"{context_str}\nCâu hỏi mới của người dùng: {user_message}"
+            final_prompt = f"{context_str}\n{username}: {user_message}"
 
-            # Gọi thẳng hàm generate_content (Bỏ qua hoàn toàn module Chats)
+            # Gọi Gemini API thuần túy
             response = client.models.generate_content(
-                model=target_model,
+                model="gemini-3.5-flash",
                 contents=final_prompt,
                 config={"system_instruction": SYSTEM_INSTRUCTION}
             )
 
-            return {
-                "reply": response.text,
-                "engine_used": f"Google Gemini ({target_model}) + ML Tools + RAG",
-                "tools_called": tools_called,
-            }
+            # 2. Ghi log phản hồi của AI xuống Data Lake
+            self.log_to_datalake(session_id, username, "model", response.text)
+
+            return {"reply": response.text}
 
         except Exception as e:
-            fallback = self._fallback_response(user_message, ml_context_data, rag_docs)
-            fallback["reply"] = f"⚠️ *(Lỗi gọi Gemini API: {str(e)})*\n\n" + fallback["reply"]
-            return fallback
-
-    def _fallback_response(self, user_message, ml_context_data, rag_docs) -> Dict[str, Any]:
-        reply_lines = ["### 🤖 Phản hồi từ Hệ thống Hybrid AI (Offline Mode)\n"]
-        if ml_context_data:
-            reply_lines.append(f"**Kết quả phân tích từ Mô hình Machine Learning:**\n```json\n{json.dumps(ml_context_data, ensure_ascii=False, indent=2)}\n```")
-        if rag_docs:
-            reply_lines.append(f"**Tài liệu RAG liên quan:**\n> {rag_docs[0]['chunk_content']}")
-        return {
-            "reply": "\n".join(reply_lines),
-            "engine_used": "Hybrid Rule-based Fallback",
-            "tools_called": []
-        }
+            error_msg = f"*(Lỗi kết nối AI: {str(e)})*"
+            self.log_to_datalake(session_id, username, "error", error_msg)
+            return {"reply": error_msg}
