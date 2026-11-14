@@ -1,7 +1,16 @@
+import sys
+import os
+
+# --- FIX LỖI ĐƯỜNG DẪN IMPORT (No module named 'src') ---
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+if root_path not in sys.path:
+    sys.path.insert(0, root_path)
+
 import streamlit as st
 import uuid
 from src.core.agent_orchestrator import EnterpriseAIAgent
 
+# --- CẤU HÌNH TRANG ---
 st.set_page_config(page_title="Reiner AI", page_icon="✨", layout="wide")
 st.markdown("""
     <style>
