@@ -52,7 +52,7 @@ class EnterpriseAIAgent:
         # 2. Truy xuất RAG
         rag_docs = self.rag_engine.retrieve(user_message, top_k=1)
 
-        # 3. Lấy API key an toàn từ st.secrets hoặc os.getenv
+        # 3. Lấy API key an toàn
         try:
             resolved_key = api_key.strip() if api_key else ""
             if not resolved_key:
@@ -66,17 +66,20 @@ class EnterpriseAIAgent:
             if not resolved_key:
                 return self._fallback_response(user_message, ml_context_data, rag_docs)
 
-            # Khởi tạo client chuẩn của thư viện google-genai
+            # Khởi tạo client chuẩn
             client = genai.Client(api_key=resolved_key)
             target_model = model_name if model_name else "gemini-3.5-flash"
 
-            # Xử lý Lịch sử Chat an toàn tuyệt đối (Đưa thành chuỗi văn bản thay vì Object)
+            # ---------------------------------------------------------
+            # CÁCH CHUẨN 100% KHÔNG BỊ LỖI PYDANTIC:
+            # Gộp toàn bộ ngữ cảnh và lịch sử thành 1 đoạn Prompt String 
+            # thay vì dùng hàm client.chats.create()
+            # ---------------------------------------------------------
             context_str = "[Ngữ cảnh hội thoại trước đó]\n"
             for msg in history[-6:]:
                 role_name = "Người dùng" if msg.get("role") == "user" else "AI"
                 context_str += f"{role_name}: {msg.get('content', '')}\n"
 
-            # Ghép thêm ngữ cảnh ML/RAG vào tin nhắn
             context_str += "\n[Dữ liệu Hệ thống]\n"
             if ml_context_data:
                 context_str += f"ML Data: {json.dumps(ml_context_data, ensure_ascii=False)}\n"
@@ -85,12 +88,12 @@ class EnterpriseAIAgent:
             
             final_prompt = f"{context_str}\nCâu hỏi mới của người dùng: {user_message}"
 
-            # Cấu hình System Instruction cho Client mới
-            config = {"system_instruction": SYSTEM_INSTRUCTION}
-
-            # Gọi API qua client.chats (KHÔNG DÙNG THAM SỐ history để tránh lỗi Pydantic)
-            chat = client.chats.create(model=target_model, config=config)
-            response = chat.send_message(final_prompt)
+            # Gọi thẳng hàm generate_content (Bỏ qua hoàn toàn module Chats)
+            response = client.models.generate_content(
+                model=target_model,
+                contents=final_prompt,
+                config={"system_instruction": SYSTEM_INSTRUCTION}
+            )
 
             return {
                 "reply": response.text,
