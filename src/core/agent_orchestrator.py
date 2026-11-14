@@ -1,27 +1,38 @@
 import os
 import json
-import uuid
+import io
 from datetime import datetime
 from typing import List, Dict, Any
 import streamlit as st
 from google import genai
-from hdfs import InsecureClient
+from minio import Minio
 
 SYSTEM_INSTRUCTION = """Bạn là Reiner, một trợ lý AI doanh nghiệp thông minh, sắc sảo và chuyên nghiệp. 
 Giải thích toán học dùng LaTeX, viết code chuẩn xác, ngắn gọn đi thẳng vào vấn đề."""
 
 class EnterpriseAIAgent:
     def __init__(self):
-        # Thiết lập kết nối Data Lake (HDFS)
+        # Thiết lập kết nối Data Lake (MinIO thay vì HDFS)
         try:
-            # Thay IP bằng địa chỉ Hadoop NameNode của bạn
-            self.hdfs_client = InsecureClient('http://localhost:50070', user='hdfs')
-            self.hdfs_log_path = '/user/hive/warehouse/datalake/reiner_logs/'
+            # Lưu ý: "minio:9000" vì chúng ta chạy chung trong mạng Docker
+            self.minio_client = Minio(
+                "minio:9000",
+                access_key="reineradmin",
+                secret_key="reiner12345",
+                secure=False
+            )
+            self.bucket_name = "reiner-logs"
+            
+            # Tự động tạo thư mục gốc (bucket) nếu chưa tồn tại
+            if not self.minio_client.bucket_exists(self.bucket_name):
+                self.minio_client.make_bucket(self.bucket_name)
+                print(f"Đã tạo thùng chứa Data Lake: {self.bucket_name}")
+                
         except Exception as e:
-            print(f"Lỗi khởi tạo HDFS: {e}")
+            print(f"Lỗi khởi tạo MinIO: {e}")
 
     def log_to_datalake(self, session_id: str, username: str, role: str, content: str):
-        """Đóng gói dữ liệu thành JSON và bắn lên thư mục Data Lake"""
+        """Đóng gói dữ liệu thành JSON và bắn thẳng lên MinIO"""
         log_entry = {
             "session_id": session_id,
             "username": username,
@@ -29,17 +40,24 @@ class EnterpriseAIAgent:
             "content": content,
             "timestamp": datetime.now().isoformat()
         }
-        # Đặt tên file log theo timestamp tới phần nghìn giây
-        file_name = f"log_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.json"
+        
+        file_name = f"chat_logs/log_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.json"
         
         try:
-            full_path = os.path.join(self.hdfs_log_path, file_name)
-            # Ghi file thẳng lên HDFS
-            with self.hdfs_client.write(full_path, encoding='utf-8') as writer:
-                json.dump(log_entry, writer)
+            # Chuyển đổi dict thành luồng byte để MinIO lưu trữ
+            json_bytes = json.dumps(log_entry, ensure_ascii=False).encode('utf-8')
+            json_stream = io.BytesIO(json_bytes)
+            
+            # Ghi file thẳng lên Data Lake
+            self.minio_client.put_object(
+                bucket_name=self.bucket_name,
+                object_name=file_name,
+                data=json_stream,
+                length=len(json_bytes),
+                content_type="application/json"
+            )
         except Exception as e:
-            # Try-except để bot vẫn chạy mượt mà ngay cả khi HDFS chưa mở
-            print(f"Chưa kết nối được HDFS (Log tạm bỏ qua): {e}")
+            print(f"Chưa kết nối được MinIO (Log tạm bỏ qua): {e}")
 
     def chat_stream(
         self,

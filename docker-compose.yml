@@ -28,3 +28,16 @@ services:
     depends_on:
       - ai-backend
     command: streamlit run src/ui/chat_app.py --server.port=8501 --server.address=0.0.0.0
+
+  minio:
+    image: minio/minio
+    container_name: reiner_datalake
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=reineradmin
+      - MINIO_ROOT_PASSWORD=reiner12345
+    volumes:
+      - ./datalake_data:/data
+    command: server /data --console-address ":9001"
