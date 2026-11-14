@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import List, Dict, Any
 from minio import Minio
 
-# --- ÉP PYTHON DÙNG IPV4 ĐỂ FIX TRIỆT ĐỂ LỖI READ TIMED OUT TỚI GOOGLE ---
+# --- ÉP PYTHON DÙNG IPV4 ĐỂ TRÁNH LỖI READ TIMED OUT TRÊN WINDOWS ---
 urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
 
 SYSTEM_INSTRUCTION = """Bạn là Reiner, một trợ lý AI doanh nghiệp thông minh, sắc sảo và chuyên nghiệp. 
@@ -79,14 +79,17 @@ class EnterpriseAIAgent:
         self.log_to_datalake(session_id, username, "user", user_message)
 
         try:
+            # Chỉ lấy key từ ô nhập trên giao diện hoặc biến môi trường (KHÔNG gán cứng key trong code)
             active_key = (
                 api_key_override.strip()
                 if (api_key_override and api_key_override.strip())
-                else os.getenv("GEMINI_API_KEY", "AQ.Ab8RN6Jxm2JUUcnf3GSVAQZHqB-ggHb4qjfZDWDbSHNCYvyTsQ").strip()
+                else os.getenv("GEMINI_API_KEY", "").strip()
             )
 
             if not active_key:
-                raise ValueError("Chưa có API Key! Hãy nhập key trên giao diện.")
+                return {
+                    "reply": "⚠️ **Chưa có API Key!** Vui lòng dán Gemini API Key của bạn vào ô **🔑 Gemini API Key** ở thanh công cụ bên trái rồi nhấn Enter."
+                }
 
             context_str = ""
             for msg in history[-10:]:
@@ -112,7 +115,6 @@ class EnterpriseAIAgent:
                 ]
             }
 
-            # Ưu tiên gọi bản 3.5 trước, tự động fallback nếu tên endpoint khác
             models_to_try = [
                 "gemini-3.5-flash",
                 "gemini-3.5-pro",

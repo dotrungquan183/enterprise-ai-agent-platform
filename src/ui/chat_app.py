@@ -64,12 +64,19 @@ with st.sidebar:
     st.caption(f"Quyền: {st.session_state['role'].upper()}")
     
     st.markdown("---")
-    # Ô nhập API Key (đặt sẵn key mới của bạn làm giá trị mặc định)
+    
+    # Ô nhập trực tiếp trên giao diện, không dùng st.secrets nữa
     user_api_key = st.text_input(
         "🔑 Gemini API Key",
-        value="AQ.Ab8RN6Jxm2JUUcnf3GSVAQZHqB-ggHb4qjfZDWDbSHNCYvyTsQ",
-        type="password"
+        value="",
+        type="password",
+        placeholder="Dán API Key vào đây rồi nhấn Enter..."
     )
+    
+    if not user_api_key:
+        st.caption("⚠️ *Hãy nhập API Key ở trên để bắt đầu chat.*")
+    else:
+        st.caption("✅ *Đã nhận API Key.*")
     
     if st.button("📝 New chat", use_container_width=True):
         st.session_state["messages"] = []
