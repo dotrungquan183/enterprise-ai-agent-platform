@@ -6,6 +6,13 @@ import urllib3
 from datetime import datetime
 from typing import List, Dict, Any
 
+# Tự động load biến môi trường từ file .env nếu chạy ở local
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # Ép buộc Python dùng IPv4 cho các kết nối mạng ổn định trên Windows
 urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET
 
@@ -17,9 +24,14 @@ class EnterpriseAIAgent:
     def __init__(self):
         self.http_session = requests.Session()
 
-        # Cấu hình Supabase REST API với Project ID chuẩn xác
-        self.supabase_url = "https://pehksvqnwpemeifpjnnx.supabase.co/rest/v1/chat_logs"
-        self.supabase_key = "sb_secret_vYEq1KruST1kdmqk4z1Rog_K205n-Or"
+        # Lấy giá trị trực tiếp từ biến môi trường (hoặc file .env)
+        self.supabase_url = os.getenv("SUPABASE_URL", "https://pehksvqnwpemeifpjnnx.supabase.co/rest/v1/chat_logs")
+        self.supabase_key = os.getenv("SUPABASE_KEY", "").strip()
+        
+        # In kiểm tra trạng thái nhận Key trên console local
+        print(f"DEBUG INIT: Supabase URL -> {self.supabase_url}")
+        print(f"DEBUG INIT: Supabase Key length -> {len(self.supabase_key)} (Bắt đầu bằng: {self.supabase_key[:10]}...)")
+
         self.supabase_headers = {
             "apikey": self.supabase_key,
             "Authorization": f"Bearer {self.supabase_key}",
@@ -28,7 +40,7 @@ class EnterpriseAIAgent:
         }
 
     def log_to_datalake(self, session_id: str, username: str, role: str, content: str):
-        """Hàm ghi log trực tiếp lên Supabase"""
+        """Hàm ghi log chuẩn xác như phiên bản cũ, đảm bảo không bị lệch đường dẫn và header"""
         log_entry = {
             "session_id": str(session_id),
             "username": str(username),
@@ -39,20 +51,25 @@ class EnterpriseAIAgent:
         }
 
         try:
-            res = self.http_session.post(
-                self.supabase_url, 
-                headers=self.supabase_headers, 
-                json=log_entry, 
-                timeout=5
-            )
+            # Gán thẳng URL cứng tuyệt đối tránh việc code tự động nối chuỗi bị sai path
+            url = "https://pehksvqnwpemeifpjnnx.supabase.co/rest/v1/chat_logs"
+            headers = {
+                "apikey": self.supabase_key,
+                "Authorization": f"Bearer {self.supabase_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+            }
+            
+            res = self.http_session.post(url, headers=headers, json=log_entry, timeout=5)
+            print(f"DEBUG SUPABASE RESPONSE [{role}]: Status {res.status_code} - {res.text}")
+            
             if res.status_code < 400:
-                print("✅ [Supabase] Đã ghi log thành công lên mây!")
-            else:
-                print(f"⚠️ [Supabase] Lỗi HTTP {res.status_code}: {res.text}")
+                print(f"✅ [Supabase] Đã ghi log thành công vai trò [{role}] lên mây!")
+                return
         except Exception as e:
-            print(f"⚠️ [Supabase] Lỗi kết nối: {e}")
+            print(f"⚠️ [Supabase] Lỗi ngoại lệ: {e}")
 
-        # Fallback lưu dự phòng local nếu mất mạng đột xuất
+        # Fallback local backup
         try:
             backup_file = "local_chat_backup.json"
             existing_data = []
@@ -87,7 +104,7 @@ class EnterpriseAIAgent:
 
             if not active_key:
                 return {
-                    "reply": "⚠️ **Chưa có API Key!** Vui lòng dán Gemini API Key vào ô **🔑 Gemini API Key** ở thanh công cụ bên trái rồi nhấn Enter."
+                    "reply": "⚠️ **Chưa có API Key!** Vui lòng dán Gemini API Key mới vào ô **🔑 Gemini API Key** ở thanh công cụ bên trái rồi nhấn Enter."
                 }
 
             context_str = ""
@@ -114,7 +131,7 @@ class EnterpriseAIAgent:
                 ]
             }
 
-            # Ưu tiên quét model 3.5 trước
+            # Ưu tiên tuyệt đối nhóm model 3.5 trước, sau đó quét dự phòng các model khác
             models_to_try = [
                 "gemini-3.5-flash",
                 "gemini-3.5-pro",

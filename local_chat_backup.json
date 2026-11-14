@@ -30,5 +30,101 @@
     "content": "*(Lỗi kết nối AI: Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.)*",
     "timestamp": "2026-11-14T21:32:53.691798",
     "is_synced": false
+  },
+  {
+    "session_id": "05244b0c-eb6f-4a76-80b8-64fb07827a2c",
+    "username": "quan",
+    "role": "user",
+    "content": "alo",
+    "timestamp": "2026-11-14T21:48:22.536186",
+    "is_synced": false
+  },
+  {
+    "session_id": "05244b0c-eb6f-4a76-80b8-64fb07827a2c",
+    "username": "quan",
+    "role": "error",
+    "content": "*(Lỗi kết nối AI: Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.)*",
+    "timestamp": "2026-11-14T21:48:25.208031",
+    "is_synced": false
+  },
+  {
+    "session_id": "05244b0c-eb6f-4a76-80b8-64fb07827a2c",
+    "username": "quan",
+    "role": "user",
+    "content": "sao r bạn",
+    "timestamp": "2026-11-14T21:53:12.287435",
+    "is_synced": false
+  },
+  {
+    "session_id": "05244b0c-eb6f-4a76-80b8-64fb07827a2c",
+    "username": "quan",
+    "role": "error",
+    "content": "*(Lỗi kết nối AI: Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.)*",
+    "timestamp": "2026-11-14T21:53:14.305395",
+    "is_synced": false
+  },
+  {
+    "session_id": "a8bf7af4-3379-4fa1-9726-a114de046344",
+    "username": "quan",
+    "role": "user",
+    "content": "sao rồi",
+    "timestamp": "2026-11-14T21:53:48.523783",
+    "is_synced": false
+  },
+  {
+    "session_id": "a8bf7af4-3379-4fa1-9726-a114de046344",
+    "username": "quan",
+    "role": "error",
+    "content": "*(Lỗi kết nối AI: Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.)*",
+    "timestamp": "2026-11-14T21:53:51.541696",
+    "is_synced": false
+  },
+  {
+    "session_id": "09311aa8-4550-44f3-8fcd-6a1c27a942a3",
+    "username": "quan",
+    "role": "user",
+    "content": "test supa",
+    "timestamp": "2026-11-14T21:57:44.569858",
+    "is_synced": false
+  },
+  {
+    "session_id": "09311aa8-4550-44f3-8fcd-6a1c27a942a3",
+    "username": "quan",
+    "role": "error",
+    "content": "*(Lỗi kết nối AI: Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.)*",
+    "timestamp": "2026-11-14T21:57:45.818031",
+    "is_synced": false
+  },
+  {
+    "session_id": "164dba34-123c-4c92-bf25-29757b4d5231",
+    "username": "quan",
+    "role": "user",
+    "content": "test",
+    "timestamp": "2026-11-14T21:59:16.232203",
+    "is_synced": false
+  },
+  {
+    "session_id": "164dba34-123c-4c92-bf25-29757b4d5231",
+    "username": "quan",
+    "role": "error",
+    "content": "*(Lỗi kết nối AI: Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.)*",
+    "timestamp": "2026-11-14T21:59:17.724333",
+    "is_synced": false
+  },
+  {
+    "session_id": "e1049f85-af3f-467c-b4f8-c611a47ca851",
+    "username": "quan",
+    "role": "user",
+    "content": "test",
+    "timestamp": "2026-11-14T22:01:05.252561",
+    "is_synced": false
+  },
+  {
+    "session_id": "e1049f85-af3f-467c-b4f8-c611a47ca851",
+    "username": "quan",
+    "role": "error",
+    "content": "*(Lỗi kết nối AI: Không thể kết nối tới máy chủ Gemini hoặc đã cạn hạn mức quota toàn bộ model.)*",
+    "timestamp": "2026-11-14T22:01:07.013093",
+    "is_synced": false
   }
 ]
