@@ -8,7 +8,7 @@ class EnterpriseAIAgent:
     def __init__(self):
         self.http_session = requests.Session()
         
-        # Đọc trực tiếp từ biến môi trường .env (hoặc Streamlit Secrets)
+        # Đọc trực tiếp từ biến môi trường .env hoặc Streamlit Secrets
         self.tunnel_url = os.getenv(
             "LOCAL_TUNNEL_URL", 
             "https://wise-sorry-estimated-pollution.trycloudflare.com/generate"
@@ -70,14 +70,20 @@ class EnterpriseAIAgent:
                 "system_instruction": system_instruction
             }
 
+            # Bổ sung User-Agent để Cloudflare Quick Tunnel không chặn request từ cloud server
+            headers = {
+                "Content-Type": "application/json",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+
             # Gửi yêu cầu qua Cloudflare Tunnel về máy cá nhân
-            response = self.http_session.post(self.tunnel_url, json=payload, timeout=60)
+            response = self.http_session.post(self.tunnel_url, json=payload, headers=headers, timeout=60)
             
             if response.status_code == 200:
                 data = response.json()
                 reply_text = data.get("reply", "Không nhận được phản hồi từ Local AI.")
             else:
-                reply_text = f"*(Lỗi Tunnel HTTP {response.status_code})*"
+                reply_text = f"*(Lỗi Tunnel HTTP {response.status_code}: {response.text})*"
 
             self.log_to_datalake(session_id, username, "model", reply_text)
             return {"reply": reply_text}
