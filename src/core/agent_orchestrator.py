@@ -14,7 +14,14 @@ class EnterpriseAIAgent:
             "https://horn-development-nodes-destination.trycloudflare.com/generate"
         )
 
-        self.supabase_url = os.getenv("SUPABASE_URL", "https://pehksvqnwpemeifpjnnx.supabase.co/rest/v1/chat_logs")
+        # Tự động chuẩn hóa URL, đảm bảo luôn có đuôi /rest/v1/chat_logs ở phía sau
+        raw_supabase_url = os.getenv("SUPABASE_URL", "https://pehksvqnwpemeifpjnnx.supabase.co")
+        if not raw_supabase_url.endswith("/rest/v1/chat_logs"):
+            # Cắt dấu gạch chéo ở cuối nếu có rồi nối thêm đuôi bảng chat_logs
+            self.supabase_url = raw_supabase_url.rstrip("/") + "/rest/v1/chat_logs"
+        else:
+            self.supabase_url = raw_supabase_url
+            
         self.supabase_key = os.getenv("SUPABASE_KEY", "").strip()
         self.supabase_headers = {
             "apikey": self.supabase_key,
@@ -33,16 +40,23 @@ class EnterpriseAIAgent:
             "is_synced": False
         }
         try:
+            print(f"📡 Đang gửi log lên Supabase: {self.supabase_url}")
             res = self.http_session.post(self.supabase_url, headers=self.supabase_headers, json=log_entry, timeout=5)
+            
+            print(f"📥 Supabase Response Code: {res.status_code}")
+            print(f"📥 Supabase Response Body: {res.text}")
+
             if res.status_code < 400:
                 try:
                     from src.core.minio_sync import sync_supabase_to_minio
                     sync_supabase_to_minio()
-                except Exception:
-                    pass
-                return
-        except Exception:
-            pass
+                    print("✅ Đồng bộ sang MinIO thành công!")
+                except Exception as sync_err:
+                    print(f"❌ Lỗi đồng bộ MinIO: {str(sync_err)}")
+            else:
+                print(f"❌ Supabase từ chối nhận log (Lỗi HTTP {res.status_code})")
+        except Exception as net_err:
+            print(f"❌ Lỗi kết nối mạng tới Supabase: {str(net_err)}")
 
     def chat_stream(
         self,
