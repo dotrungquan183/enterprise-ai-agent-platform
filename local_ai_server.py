@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
-# Khặn lỗi PyTorch classes
 torch.classes.__path__ = []
 
 app = FastAPI()
@@ -14,10 +13,10 @@ model_id = "Qwen/Qwen2.5-1.5B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
-    dtype=torch.bfloat16,
+    torch_dtype=torch.bfloat16,
     low_cpu_mem_usage=True
 )
-print("✅ Local AI Server đã sẵn sàng!")
+print("✅ Local AI Server đã sẵn sàng trên cổng 8000!")
 
 class PromptRequest(BaseModel):
     prompt: str
@@ -58,5 +57,5 @@ def generate_text(req: PromptRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    # Chạy đúng vào cổng 9000 đang thông với MinIO/Tunnel của bạn
-    uvicorn.run(app, host="127.0.0.1", port=9000)
+    # Chạy cố định trên cổng 8000
+    uvicorn.run(app, host="127.0.0.1", port=8000)

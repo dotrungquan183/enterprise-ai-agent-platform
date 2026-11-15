@@ -8,10 +8,10 @@ class EnterpriseAIAgent:
     def __init__(self):
         self.http_session = requests.Session()
         
-        # Đọc trực tiếp từ biến môi trường .env hoặc Streamlit Secrets
+        # Đọc trực tiếp từ biến môi trường trên Streamlit Cloud hoặc fallback về link hiện tại
         self.tunnel_url = os.getenv(
             "LOCAL_TUNNEL_URL", 
-            "https://wise-sorry-estimated-pollution.trycloudflare.com/generate"
+            "https://horn-development-nodes-destination.trycloudflare.com/generate"
         )
 
         self.supabase_url = os.getenv("SUPABASE_URL", "https://pehksvqnwpemeifpjnnx.supabase.co/rest/v1/chat_logs")
@@ -70,13 +70,12 @@ class EnterpriseAIAgent:
                 "system_instruction": system_instruction
             }
 
-            # Bổ sung User-Agent để Cloudflare Quick Tunnel không chặn request từ cloud server
+            # Giả lập User-Agent để Cloudflare Tunnel không chặn request từ cloud server
             headers = {
                 "Content-Type": "application/json",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
 
-            # Gửi yêu cầu qua Cloudflare Tunnel về máy cá nhân
             response = self.http_session.post(self.tunnel_url, json=payload, headers=headers, timeout=60)
             
             if response.status_code == 200:
