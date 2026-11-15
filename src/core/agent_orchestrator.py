@@ -21,7 +21,7 @@ class EnterpriseAIAgent:
             self.supabase_url = raw_supabase_url.rstrip("/") + "/rest/v1/chat_logs"
         else:
             self.supabase_url = raw_supabase_url
-            
+
         self.supabase_key = os.getenv("SUPABASE_KEY", "").strip()
         self.supabase_headers = {
             "apikey": self.supabase_key,
@@ -90,7 +90,7 @@ class EnterpriseAIAgent:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
 
-            response = self.http_session.post(self.tunnel_url, json=payload, headers=headers, timeout=60)
+            response = self.http_session.post(self.tunnel_url, json=payload, headers=headers, timeout=120)
             
             if response.status_code == 200:
                 data = response.json()
