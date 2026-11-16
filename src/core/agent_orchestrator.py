@@ -90,7 +90,7 @@ class EnterpriseAIAgent:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
 
-            response = self.http_session.post(self.tunnel_url, json=payload, headers=headers, timeout=120)
+            response = self.http_session.post(self.tunnel_url, json=payload, headers=headers, timeout=240)
             
             if response.status_code == 200:
                 data = response.json()
